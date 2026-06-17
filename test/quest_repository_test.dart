@@ -3,6 +3,7 @@ import 'package:note_app/layers/data/repository/quest_repository_impl.dart';
 import 'package:note_app/layers/data/source/api/local_quest_api_client.dart';
 import 'package:note_app/layers/data/source/local/quest_local_data_source.dart';
 import 'package:note_app/layers/data/source/local/widget_data_source.dart';
+import 'package:note_app/layers/domain/entities/flash_card_entity.dart';
 import 'package:note_app/layers/domain/entities/flash_card_deck_entity.dart';
 import 'package:note_app/layers/domain/entities/shop_item_entity.dart';
 import 'package:note_app/layers/domain/entities/task_entity.dart';
@@ -81,6 +82,21 @@ void main() {
         isTrue,
       );
       expect(state.flashDecks.any((deck) => deck.id == 'english-a1'), isTrue);
+
+      final firstCard = state.flashCards[0];
+      await repository.saveFlashCard(
+        FlashCardEntity(
+          id: firstCard.id,
+          deckId: firstCard.deckId,
+          front: 'hello updated',
+          back: 'xin chao updated',
+          mastered: firstCard.mastered,
+        ),
+      );
+
+      state = await repository.loadState();
+      expect(state.flashCards[0].front, 'hello updated');
+      expect(state.flashCards[0].back, 'xin chao updated');
 
       await repository.toggleFlashCardMastered(state.flashCards[0].id);
       await repository.toggleFlashCardMastered(state.flashCards[1].id);

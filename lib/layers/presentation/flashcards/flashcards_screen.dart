@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:note_app/layers/domain/entities/flash_card_deck_entity.dart';
+import 'package:note_app/layers/domain/entities/flash_card_entity.dart';
 import 'package:note_app/layers/presentation/flashcards/controller/flashcards_controller.dart';
 import 'package:note_app/layers/presentation/widgets/coin_badge.dart';
 import 'package:note_app/layers/presentation/widgets/empty_state.dart';
@@ -263,6 +264,14 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          _FlashCardList(
+            cards: deckCards,
+            currentIndex: controller.currentIndex.value,
+            onOpen: _openCardAt,
+            onEdit: _editCard,
+            onDelete: controller.deleteCard,
+          ),
         ],
       ],
     );
@@ -345,6 +354,51 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
     }
   }
 
+  Future<void> _editCard(FlashCardEntity card) async {
+    final front = TextEditingController(text: card.front);
+    final back = TextEditingController(text: card.back);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sửa flashcard'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: front,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Từ vựng',
+                prefixIcon: Icon(Icons.style_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: back,
+              decoration: const InputDecoration(
+                labelText: 'Nghĩa',
+                prefixIcon: Icon(Icons.translate_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true) {
+      await controller.saveCard(card: card, front: front.text, back: back.text);
+    }
+  }
+
   Future<void> _importCards(String rawText) async {
     await controller.importCards(rawText);
   }
@@ -356,6 +410,13 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
   void _moveCard(int direction) {
     setState(() => _cardSlideDirection = direction);
     controller.move(direction);
+  }
+
+  void _openCardAt(int index) {
+    final delta = index - controller.currentIndex.value;
+    if (delta == 0) return;
+    setState(() => _cardSlideDirection = delta.sign);
+    controller.move(delta);
   }
 }
 
@@ -620,4 +681,132 @@ class _RewardPanel extends StatelessWidget {
   }
 }
 
+class _FlashCardList extends StatelessWidget {
+  const _FlashCardList({
+    required this.cards,
+    required this.currentIndex,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final List<FlashCardEntity> cards;
+  final int currentIndex;
+  final ValueChanged<int> onOpen;
+  final ValueChanged<FlashCardEntity> onEdit;
+  final ValueChanged<FlashCardEntity> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Danh sách từ vựng',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 8),
+        ...cards.asMap().entries.map((entry) {
+          final index = entry.key;
+          final card = entry.value;
+          final active = index == currentIndex;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              onTap: () => onOpen(index),
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: active
+                        ? const Color(0xff1d7a66)
+                        : const Color(0xffded8cc),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 26),
+                      height: 24,
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 7),
+                      decoration: BoxDecoration(
+                        color: const Color(0xffffcf4a),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                      child: Text(
+                        card.mastered ? 'OK' : '${index + 1}',
+                        style: const TextStyle(
+                          color: Color(0xff3d2a00),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        card.front,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xff20211f),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      card.mastered ? 'Đã thuộc' : 'Đang học',
+                      style: const TextStyle(
+                        color: Color(0xff68645c),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    PopupMenuButton<_CardMenuAction>(
+                      tooltip: 'Thao tác thẻ',
+                      onSelected: (action) {
+                        switch (action) {
+                          case _CardMenuAction.edit:
+                            onEdit(card);
+                          case _CardMenuAction.delete:
+                            onDelete(card);
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(
+                          value: _CardMenuAction.edit,
+                          child: ListTile(
+                            dense: true,
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Sửa'),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: _CardMenuAction.delete,
+                          child: ListTile(
+                            dense: true,
+                            leading: Icon(Icons.delete_outline),
+                            title: Text('Xóa'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
 enum _DeckMenuAction { delete }
+
+enum _CardMenuAction { edit, delete }

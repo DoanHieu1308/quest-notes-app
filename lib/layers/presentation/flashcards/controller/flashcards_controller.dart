@@ -182,6 +182,27 @@ class FlashCardsController extends MobxController {
     await load();
   }
 
+  Future<void> saveCard({
+    FlashCardEntity? card,
+    required String front,
+    required String back,
+  }) async {
+    final deckId = selectedDeckId.value;
+    final trimmedFront = front.trim();
+    final trimmedBack = back.trim();
+    if (deckId == null || trimmedFront.isEmpty || trimmedBack.isEmpty) return;
+    await _repository.saveFlashCard(
+      FlashCardEntity(
+        id: card?.id ?? newId(),
+        deckId: card?.deckId ?? deckId,
+        front: trimmedFront,
+        back: trimmedBack,
+        mastered: card?.mastered ?? false,
+      ),
+    );
+    await load();
+  }
+
   Future<void> deleteCard(FlashCardEntity card) async {
     await _repository.deleteFlashCard(card.id);
     await load();

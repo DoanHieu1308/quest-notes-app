@@ -10,6 +10,7 @@ import 'package:note_app/layers/data/source/api/quest_api_client.dart';
 import 'package:note_app/layers/data/source/local/quest_local_data_source.dart';
 import 'package:note_app/layers/data/source/local/widget_data_source.dart';
 import 'package:note_app/layers/domain/entities/flash_card_deck_entity.dart';
+import 'package:note_app/layers/domain/entities/flash_card_entity.dart';
 import 'package:note_app/layers/domain/entities/quest_state_entity.dart';
 import 'package:note_app/layers/domain/entities/shop_item_entity.dart';
 import 'package:note_app/layers/domain/entities/task_entity.dart';
@@ -176,6 +177,20 @@ class QuestRepositoryImpl implements QuestRepository {
             .toList(),
       ),
     );
+  }
+
+  @override
+  Future<void> saveFlashCard(FlashCardEntity card) async {
+    final state = _normalizeState(await _localDataSource.readState());
+    final cards = [...state.flashCards];
+    final index = cards.indexWhere((item) => item.id == card.id);
+    final dto = _translator.cardToDto(card);
+    if (index == -1) {
+      cards.add(dto);
+    } else {
+      cards[index] = dto;
+    }
+    await _saveAndSyncWidget(state.copyWith(flashCards: cards));
   }
 
   @override
