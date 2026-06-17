@@ -18,6 +18,12 @@ Android emulator:
 flutter run --dart-define=QUEST_API_BASE_URL=http://10.0.2.2:3000/api
 ```
 
+Physical Android device on the same Wi-Fi as your computer:
+
+```bash
+flutter run --dart-define=QUEST_API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:3000/api
+```
+
 Desktop or web target:
 
 ```bash
