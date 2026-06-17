@@ -23,6 +23,7 @@ class FlashCardsScreen extends StatefulWidget {
 class _FlashCardsScreenState extends State<FlashCardsScreen> {
   FlashCardsController get controller => widget.controller;
   int _cardSlideDirection = 1;
+  bool _showVocabularyList = false;
 
   @override
   void initState() {
@@ -264,14 +265,33 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _FlashCardList(
-            cards: deckCards,
-            currentIndex: controller.currentIndex.value,
-            onOpen: _openCardAt,
-            onEdit: _editCard,
-            onDelete: controller.deleteCard,
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: FilledButton.tonalIcon(
+              onPressed: () {
+                setState(() => _showVocabularyList = !_showVocabularyList);
+              },
+              icon: Icon(
+                _showVocabularyList
+                    ? Icons.visibility_off_outlined
+                    : Icons.list_alt_outlined,
+              ),
+              label: Text(
+                _showVocabularyList ? 'Ẩn danh sách' : 'Hiện danh sách',
+              ),
+            ),
           ),
+          if (_showVocabularyList) ...[
+            const SizedBox(height: 12),
+            _FlashCardList(
+              cards: deckCards,
+              currentIndex: controller.currentIndex.value,
+              onOpen: _openCardAt,
+              onEdit: _editCard,
+              onDelete: controller.deleteCard,
+            ),
+          ],
         ],
       ],
     );
