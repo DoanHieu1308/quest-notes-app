@@ -3,7 +3,7 @@ import 'package:note_app/core/security/auth_token_provider.dart';
 
 const questApiBaseUrl = String.fromEnvironment(
   'QUEST_API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:3000/api',
+  defaultValue: 'https://quest-notes-be.vercel.app/api',
 );
 
 Dio buildAppDio(AuthTokenProvider tokenProvider) {

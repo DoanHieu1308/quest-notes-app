@@ -4,6 +4,12 @@ Flutter mobile app for Quest Notes.
 
 The app now uses the shared Node.js API when it is reachable and keeps `SharedPreferences` as its offline store. Every write is saved locally first, then synced to the backend. If the network is down, the pending local state is pushed again on the next load.
 
+Default API URL:
+
+```text
+https://quest-notes-be.vercel.app/api
+```
+
 ## Run with local backend
 
 Start the API in `../quest_notes_api`:
@@ -33,5 +39,5 @@ flutter run --dart-define=QUEST_API_BASE_URL=http://localhost:3000/api
 Production backend:
 
 ```bash
-flutter run --dart-define=QUEST_API_BASE_URL=https://your-project.vercel.app/api
+flutter run --dart-define=QUEST_API_BASE_URL=https://quest-notes-be.vercel.app/api
 ```
