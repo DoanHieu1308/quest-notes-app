@@ -198,13 +198,14 @@ class QuestRepositoryImpl implements QuestRepository {
     final state = _normalizeState(await _localDataSource.readState());
     final cards = [...state.flashCards];
     var count = 0;
-    for (final line in rawText.split('\n')) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty || !trimmed.contains(':')) continue;
-      final separator = trimmed.indexOf(':');
-      final front = trimmed.substring(0, separator).trim();
-      final back = trimmed.substring(separator + 1).trim();
-      if (front.isEmpty || back.isEmpty) continue;
+
+    String? pendingFront;
+    final pendingBackLines = <String>[];
+
+    void flushPendingCard() {
+      final front = pendingFront?.trim() ?? '';
+      final back = pendingBackLines.join('\n').trim();
+      if (front.isEmpty || back.isEmpty) return;
       cards.add(
         FlashCardDto(
           id: newId(),
@@ -216,6 +217,24 @@ class QuestRepositoryImpl implements QuestRepository {
       );
       count++;
     }
+
+    for (final line in rawText.split(RegExp(r'\r?\n'))) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      if (!trimmed.contains(':')) {
+        if (pendingFront != null) pendingBackLines.add(trimmed);
+        continue;
+      }
+
+      flushPendingCard();
+      final separator = trimmed.indexOf(':');
+      pendingFront = trimmed.substring(0, separator).trim();
+      pendingBackLines
+        ..clear()
+        ..add(trimmed.substring(separator + 1).trim());
+    }
+    flushPendingCard();
+
     if (count > 0) {
       await _saveAndSyncWidget(state.copyWith(flashCards: cards));
     }

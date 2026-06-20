@@ -9,15 +9,13 @@ class FlashCardImportTranslator {
 
     for (final table in excel.tables.values) {
       for (final row in table.rows) {
-        final values = row.map((cell) => _cellText(cell?.value)).toList();
-        final front = _firstNonEmpty(values);
-        if (front == null) continue;
+        final front = _cellText(row.isNotEmpty ? row[0]?.value : null);
+        final meaning = _cellText(row.length > 1 ? row[1]?.value : null);
+        final phonetic = _cellText(row.length > 2 ? row[2]?.value : null);
+        if (front.isEmpty) continue;
+        if (_isHeaderRow(front, meaning, phonetic)) continue;
 
-        final frontIndex = values.indexOf(front);
-        final back = values
-            .skip(frontIndex + 1)
-            .firstWhere((value) => value.isNotEmpty, orElse: () => '');
-
+        final back = _backText(meaning, phonetic);
         if (back.isNotEmpty) {
           lines.add('$front : $back');
         } else if (front.contains(':')) {
@@ -29,11 +27,32 @@ class FlashCardImportTranslator {
     return lines.join('\n');
   }
 
-  String? _firstNonEmpty(List<String> values) {
-    for (final value in values) {
-      if (value.isNotEmpty) return value;
+  String _backText(String meaning, String phonetic) {
+    final parts = <String>[];
+    if (meaning.isNotEmpty) parts.add(meaning);
+    if (phonetic.isNotEmpty) parts.add('[${_stripBrackets(phonetic)}]');
+    return parts.join('\n');
+  }
+
+  String _stripBrackets(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('[') &&
+        trimmed.endsWith(']') &&
+        trimmed.length > 1) {
+      return trimmed.substring(1, trimmed.length - 1).trim();
     }
-    return null;
+    return trimmed;
+  }
+
+  bool _isHeaderRow(String front, String meaning, String phonetic) {
+    final normalized = [
+      front,
+      meaning,
+      phonetic,
+    ].map((value) => value.toLowerCase()).join('|');
+    return normalized == 'từ vựng|nghĩa|phiên âm' ||
+        normalized == 'tu vung|nghia|phien am' ||
+        normalized == 'vocabulary|meaning|phonetic';
   }
 
   String _cellText(CellValue? value) {

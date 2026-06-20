@@ -65,7 +65,7 @@ void main() {
       );
       final imported = await repository.importFlashCards(
         'english-a1',
-        'hello : xin chao\nwork : cong viec',
+        'hello : xin chao\n[he-lo]\nwork : cong viec',
       );
       expect(imported, 2);
 
@@ -81,6 +81,8 @@ void main() {
         state.flashCards.every((card) => card.deckId == 'english-a1'),
         isTrue,
       );
+      expect(state.flashCards[0].back, 'xin chao\n[he-lo]');
+      expect(state.flashCards[1].back, 'cong viec');
       expect(state.flashDecks.any((deck) => deck.id == 'english-a1'), isTrue);
 
       final firstCard = state.flashCards[0];
