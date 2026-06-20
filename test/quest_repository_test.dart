@@ -65,7 +65,7 @@ void main() {
       );
       final imported = await repository.importFlashCards(
         'english-a1',
-        'hello : xin chao\n[he-lo]\nwork : cong viec',
+        'hello : xin chao : he-lo\nwork : cong viec',
       );
       expect(imported, 2);
 

@@ -227,11 +227,11 @@ class QuestRepositoryImpl implements QuestRepository {
       }
 
       flushPendingCard();
-      final separator = trimmed.indexOf(':');
-      pendingFront = trimmed.substring(0, separator).trim();
+      final parsed = _parseImportLine(trimmed);
+      pendingFront = parsed.front;
       pendingBackLines
         ..clear()
-        ..add(trimmed.substring(separator + 1).trim());
+        ..add(parsed.back);
     }
     flushPendingCard();
 
@@ -239,6 +239,31 @@ class QuestRepositoryImpl implements QuestRepository {
       await _saveAndSyncWidget(state.copyWith(flashCards: cards));
     }
     return count;
+  }
+
+  ({String front, String back}) _parseImportLine(String line) {
+    final parts = line.split(':');
+    final front = parts.first.trim();
+    final meaning = parts.length > 1 ? parts[1].trim() : '';
+    final phonetic = parts.length > 2 ? parts.sublist(2).join(':').trim() : '';
+    return (front: front, back: _flashCardBackText(meaning, phonetic));
+  }
+
+  String _flashCardBackText(String meaning, String phonetic) {
+    final parts = <String>[];
+    if (meaning.isNotEmpty) parts.add(meaning);
+    if (phonetic.isNotEmpty) parts.add('[${_stripBrackets(phonetic)}]');
+    return parts.join('\n');
+  }
+
+  String _stripBrackets(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('[') &&
+        trimmed.endsWith(']') &&
+        trimmed.length > 1) {
+      return trimmed.substring(1, trimmed.length - 1).trim();
+    }
+    return trimmed;
   }
 
   @override

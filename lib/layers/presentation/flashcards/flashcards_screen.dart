@@ -376,7 +376,9 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
 
   Future<void> _editCard(FlashCardEntity card) async {
     final front = TextEditingController(text: card.front);
-    final back = TextEditingController(text: card.back);
+    final backParts = _FlashCardBackParts.fromBack(card.back);
+    final meaning = TextEditingController(text: backParts.meaning);
+    final phonetic = TextEditingController(text: backParts.phonetic);
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -394,10 +396,18 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: back,
+              controller: meaning,
               decoration: const InputDecoration(
                 labelText: 'Nghĩa',
                 prefixIcon: Icon(Icons.translate_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phonetic,
+              decoration: const InputDecoration(
+                labelText: 'Phiên âm',
+                prefixIcon: Icon(Icons.record_voice_over_outlined),
               ),
             ),
           ],
@@ -415,7 +425,11 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
       ),
     );
     if (saved == true) {
-      await controller.saveCard(card: card, front: front.text, back: back.text);
+      await controller.saveCard(
+        card: card,
+        front: front.text,
+        back: _flashCardBackText(meaning.text, phonetic.text),
+      );
     }
   }
 
@@ -552,11 +566,17 @@ class _ImportPanel extends StatefulWidget {
 }
 
 class _ImportPanelState extends State<_ImportPanel> {
-  final controller = TextEditingController();
+  final bulkController = TextEditingController();
+  final frontController = TextEditingController();
+  final meaningController = TextEditingController();
+  final phoneticController = TextEditingController();
 
   @override
   void dispose() {
-    controller.dispose();
+    bulkController.dispose();
+    frontController.dispose();
+    meaningController.dispose();
+    phoneticController.dispose();
     super.dispose();
   }
 
@@ -568,6 +588,11 @@ class _ImportPanelState extends State<_ImportPanel> {
         spacing: 8,
         runSpacing: 8,
         children: [
+          FilledButton.icon(
+            onPressed: () => _showSingleCardDialog(context),
+            icon: const Icon(Icons.add_card_outlined),
+            label: const Text('Thêm thẻ'),
+          ),
           FilledButton.icon(
             onPressed: () => _showImportDialog(context),
             icon: const Icon(Icons.playlist_add),
@@ -601,8 +626,74 @@ class _ImportPanelState extends State<_ImportPanel> {
     }
   }
 
+  Future<void> _showSingleCardDialog(BuildContext context) async {
+    frontController.clear();
+    meaningController.clear();
+    phoneticController.clear();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Thêm thẻ vào "${widget.deckName}"'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: frontController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Từ vựng',
+                  prefixIcon: Icon(Icons.style_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: meaningController,
+                decoration: const InputDecoration(
+                  labelText: 'Nghĩa',
+                  prefixIcon: Icon(Icons.translate_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneticController,
+                decoration: const InputDecoration(
+                  labelText: 'Phiên âm',
+                  prefixIcon: Icon(Icons.record_voice_over_outlined),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.add),
+            label: const Text('Thêm thẻ'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true &&
+        frontController.text.trim().isNotEmpty &&
+        meaningController.text.trim().isNotEmpty) {
+      widget.onImport(
+        [
+          frontController.text.trim(),
+          meaningController.text.trim(),
+          phoneticController.text.trim(),
+        ].join(' : '),
+      );
+    }
+  }
+
   Future<void> _showImportDialog(BuildContext context) async {
-    controller.clear();
+    bulkController.clear();
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -610,12 +701,12 @@ class _ImportPanelState extends State<_ImportPanel> {
         content: SizedBox(
           width: 420,
           child: TextField(
-            controller: controller,
+            controller: bulkController,
             autofocus: true,
             minLines: 8,
             maxLines: 12,
             decoration: const InputDecoration(
-              hintText: 'hello : xin chào\napple : quả táo',
+              hintText: 'hello : xin chào : he-lo\napple : quả táo : ap-pul',
               border: OutlineInputBorder(),
             ),
           ),
@@ -633,10 +724,55 @@ class _ImportPanelState extends State<_ImportPanel> {
         ],
       ),
     );
-    if (saved == true && controller.text.trim().isNotEmpty) {
-      widget.onImport(controller.text);
+    if (saved == true && bulkController.text.trim().isNotEmpty) {
+      widget.onImport(bulkController.text);
     }
   }
+}
+
+class _FlashCardBackParts {
+  const _FlashCardBackParts({required this.meaning, required this.phonetic});
+
+  final String meaning;
+  final String phonetic;
+
+  factory _FlashCardBackParts.fromBack(String back) {
+    final lines = back
+        .split(RegExp(r'\r?\n'))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) {
+      return const _FlashCardBackParts(meaning: '', phonetic: '');
+    }
+
+    final last = lines.last;
+    final hasPhonetic =
+        last.startsWith('[') && last.endsWith(']') && last.length > 1;
+    return _FlashCardBackParts(
+      meaning: hasPhonetic ? lines.take(lines.length - 1).join('\n') : back,
+      phonetic: hasPhonetic ? last.substring(1, last.length - 1).trim() : '',
+    );
+  }
+}
+
+String _flashCardBackText(String meaning, String phonetic) {
+  final trimmedMeaning = meaning.trim();
+  final trimmedPhonetic = phonetic.trim();
+  final parts = <String>[];
+  if (trimmedMeaning.isNotEmpty) parts.add(trimmedMeaning);
+  if (trimmedPhonetic.isNotEmpty) {
+    parts.add('[${_stripOuterBrackets(trimmedPhonetic)}]');
+  }
+  return parts.join('\n');
+}
+
+String _stripOuterBrackets(String value) {
+  final trimmed = value.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']') && trimmed.length > 1) {
+    return trimmed.substring(1, trimmed.length - 1).trim();
+  }
+  return trimmed;
 }
 
 class _RewardPanel extends StatelessWidget {
