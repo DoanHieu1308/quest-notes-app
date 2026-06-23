@@ -197,6 +197,10 @@ class QuestRepositoryImpl implements QuestRepository {
   Future<int> importFlashCards(String deckId, String rawText) async {
     final state = _normalizeState(await _localDataSource.readState());
     final cards = [...state.flashCards];
+    final knownFronts = cards
+        .where((card) => card.deckId == deckId)
+        .map((card) => _frontKey(card.front))
+        .toSet();
     var count = 0;
 
     String? pendingFront;
@@ -206,6 +210,8 @@ class QuestRepositoryImpl implements QuestRepository {
       final front = pendingFront?.trim() ?? '';
       final back = pendingBackLines.join('\n').trim();
       if (front.isEmpty || back.isEmpty) return;
+      final key = _frontKey(front);
+      if (knownFronts.contains(key)) return;
       cards.add(
         FlashCardDto(
           id: newId(),
@@ -215,6 +221,7 @@ class QuestRepositoryImpl implements QuestRepository {
           mastered: false,
         ),
       );
+      knownFronts.add(key);
       count++;
     }
 
@@ -264,6 +271,10 @@ class QuestRepositoryImpl implements QuestRepository {
       return trimmed.substring(1, trimmed.length - 1).trim();
     }
     return trimmed;
+  }
+
+  String _frontKey(String front) {
+    return front.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
   @override

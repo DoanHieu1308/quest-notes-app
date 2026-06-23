@@ -85,6 +85,15 @@ void main() {
       expect(state.flashCards[1].back, 'cong viec');
       expect(state.flashDecks.any((deck) => deck.id == 'english-a1'), isTrue);
 
+      final duplicateImport = await repository.importFlashCards(
+        'english-a1',
+        'hello : duplicate meaning : duplicate-phonetic',
+      );
+      expect(duplicateImport, 0);
+
+      state = await repository.loadState();
+      expect(state.flashCards.length, 2);
+
       final firstCard = state.flashCards[0];
       await repository.saveFlashCard(
         FlashCardEntity(

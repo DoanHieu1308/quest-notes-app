@@ -117,6 +117,7 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
         const SizedBox(height: 12),
         _ImportPanel(
           deckName: deck.name,
+          existingFronts: deckCards.map((card) => card.front).toSet(),
           onImport: _importCards,
           onImportExcel: _importCardsFromExcel,
         ),
@@ -553,11 +554,13 @@ class _DeckListTile extends StatelessWidget {
 class _ImportPanel extends StatefulWidget {
   const _ImportPanel({
     required this.deckName,
+    required this.existingFronts,
     required this.onImport,
     required this.onImportExcel,
   });
 
   final String deckName;
+  final Set<String> existingFronts;
   final ValueChanged<String> onImport;
   final Future<void> Function(Uint8List bytes) onImportExcel;
 
@@ -682,9 +685,17 @@ class _ImportPanelState extends State<_ImportPanel> {
     if (saved == true &&
         frontController.text.trim().isNotEmpty &&
         meaningController.text.trim().isNotEmpty) {
+      final front = frontController.text.trim();
+      if (_frontKeys(widget.existingFronts).contains(_frontKey(front))) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Từ "$front" đã có trong bộ này.')),
+        );
+        return;
+      }
       widget.onImport(
         [
-          frontController.text.trim(),
+          front,
           meaningController.text.trim(),
           phoneticController.text.trim(),
         ].join(' : '),
@@ -773,6 +784,14 @@ String _stripOuterBrackets(String value) {
     return trimmed.substring(1, trimmed.length - 1).trim();
   }
   return trimmed;
+}
+
+Set<String> _frontKeys(Iterable<String> fronts) {
+  return fronts.map(_frontKey).toSet();
+}
+
+String _frontKey(String front) {
+  return front.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
 
 class _RewardPanel extends StatelessWidget {
