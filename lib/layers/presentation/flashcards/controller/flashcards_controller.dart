@@ -184,19 +184,30 @@ class FlashCardsController extends MobxController {
 
   Future<void> saveCard({
     FlashCardEntity? card,
-    required String front,
-    required String back,
+    required String frontText,
+    required String frontPhonetic,
+    required String backText,
+    required String backPhonetic,
+    required String meaning,
   }) async {
     final deckId = selectedDeckId.value;
-    final trimmedFront = front.trim();
-    final trimmedBack = back.trim();
+    final trimmedFront = frontText.trim();
+    final trimmedBack = backText.trim();
+    final trimmedFrontPhonetic = _stripBrackets(frontPhonetic);
+    final trimmedBackPhonetic = _stripBrackets(backPhonetic);
+    final trimmedMeaning = meaning.trim();
     if (deckId == null || trimmedFront.isEmpty || trimmedBack.isEmpty) return;
     await _repository.saveFlashCard(
       FlashCardEntity(
         id: card?.id ?? newId(),
         deckId: card?.deckId ?? deckId,
-        front: trimmedFront,
-        back: trimmedBack,
+        front: _sideText(trimmedFront, trimmedFrontPhonetic),
+        back: _backText(trimmedBack, trimmedBackPhonetic, trimmedMeaning),
+        frontText: trimmedFront,
+        frontPhonetic: trimmedFrontPhonetic,
+        backText: trimmedBack,
+        backPhonetic: trimmedBackPhonetic,
+        meaning: trimmedMeaning,
         mastered: card?.mastered ?? false,
       ),
     );
@@ -232,6 +243,30 @@ class FlashCardsController extends MobxController {
   }
 
   int rewardForCards(int count) => max(20, count * 5);
+
+  String _sideText(String text, String phonetic) {
+    final parts = <String>[];
+    if (text.isNotEmpty) parts.add(text);
+    if (phonetic.isNotEmpty) parts.add('[${_stripBrackets(phonetic)}]');
+    return parts.join('\n');
+  }
+
+  String _backText(String text, String phonetic, String meaning) {
+    return [
+      _sideText(text, phonetic),
+      if (meaning.isNotEmpty) meaning,
+    ].where((part) => part.trim().isNotEmpty).join('\n');
+  }
+
+  String _stripBrackets(String value) {
+    final trimmed = value.trim();
+    if (trimmed.startsWith('[') &&
+        trimmed.endsWith(']') &&
+        trimmed.length > 1) {
+      return trimmed.substring(1, trimmed.length - 1).trim();
+    }
+    return trimmed;
+  }
 
   void clearImportCount() {
     runInAction(() => lastImportCount.value = null);

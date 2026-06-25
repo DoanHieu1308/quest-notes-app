@@ -24,6 +24,7 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
   FlashCardsController get controller => widget.controller;
   int _cardSlideDirection = 1;
   bool _showVocabularyList = false;
+  bool _showMeaning = false;
 
   @override
   void initState() {
@@ -117,7 +118,7 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
         const SizedBox(height: 12),
         _ImportPanel(
           deckName: deck.name,
-          existingFronts: deckCards.map((card) => card.front).toSet(),
+          existingFronts: deckCards.map((card) => card.frontText).toSet(),
           onImport: _importCards,
           onImportExcel: _importCardsFromExcel,
         ),
@@ -206,16 +207,13 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: const Color(0xffded8cc)),
                   ),
-                  child: Text(
-                    controller.showingBack.value ? card.back : card.front,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: controller.showingBack.value
-                          ? Colors.white
-                          : const Color(0xff20211f),
-                      fontSize: 32,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  child: _FlashCardFace(
+                    card: card,
+                    showingBack: controller.showingBack.value,
+                    showMeaning: _showMeaning,
+                    onToggleMeaning: () {
+                      setState(() => _showMeaning = !_showMeaning);
+                    },
                   ),
                 ),
               ),
@@ -376,42 +374,61 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
   }
 
   Future<void> _editCard(FlashCardEntity card) async {
-    final front = TextEditingController(text: card.front);
-    final backParts = _FlashCardBackParts.fromBack(card.back);
-    final meaning = TextEditingController(text: backParts.meaning);
-    final phonetic = TextEditingController(text: backParts.phonetic);
+    final frontText = TextEditingController(text: card.frontText);
+    final frontPhonetic = TextEditingController(text: card.frontPhonetic);
+    final backText = TextEditingController(text: card.backText);
+    final backPhonetic = TextEditingController(text: card.backPhonetic);
+    final meaning = TextEditingController(text: card.meaning);
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Sửa flashcard'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: front,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Từ vựng',
-                prefixIcon: Icon(Icons.style_outlined),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: frontText,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mặt trước',
+                  prefixIcon: Icon(Icons.style_outlined),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: meaning,
-              decoration: const InputDecoration(
-                labelText: 'Nghĩa',
-                prefixIcon: Icon(Icons.translate_outlined),
+              const SizedBox(height: 12),
+              TextField(
+                controller: frontPhonetic,
+                decoration: const InputDecoration(
+                  labelText: 'Phiên âm mặt trước',
+                  prefixIcon: Icon(Icons.record_voice_over_outlined),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: phonetic,
-              decoration: const InputDecoration(
-                labelText: 'Phiên âm',
-                prefixIcon: Icon(Icons.record_voice_over_outlined),
+              const SizedBox(height: 12),
+              TextField(
+                controller: backText,
+                decoration: const InputDecoration(
+                  labelText: 'Mặt sau',
+                  prefixIcon: Icon(Icons.translate_outlined),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: backPhonetic,
+                decoration: const InputDecoration(
+                  labelText: 'Phiên âm mặt sau',
+                  prefixIcon: Icon(Icons.record_voice_over_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: meaning,
+                decoration: const InputDecoration(
+                  labelText: 'Nghĩa tiếng Việt',
+                  prefixIcon: Icon(Icons.lightbulb_outline),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -428,8 +445,11 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
     if (saved == true) {
       await controller.saveCard(
         card: card,
-        front: front.text,
-        back: _flashCardBackText(meaning.text, phonetic.text),
+        frontText: frontText.text,
+        frontPhonetic: frontPhonetic.text,
+        backText: backText.text,
+        backPhonetic: backPhonetic.text,
+        meaning: meaning.text,
       );
     }
   }
@@ -443,15 +463,94 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
   }
 
   void _moveCard(int direction) {
-    setState(() => _cardSlideDirection = direction);
+    setState(() {
+      _cardSlideDirection = direction;
+      _showMeaning = false;
+    });
     controller.move(direction);
   }
 
   void _openCardAt(int index) {
     final delta = index - controller.currentIndex.value;
     if (delta == 0) return;
-    setState(() => _cardSlideDirection = delta.sign);
+    setState(() {
+      _cardSlideDirection = delta.sign;
+      _showMeaning = false;
+    });
     controller.move(delta);
+  }
+}
+
+class _FlashCardFace extends StatelessWidget {
+  const _FlashCardFace({
+    required this.card,
+    required this.showingBack,
+    required this.showMeaning,
+    required this.onToggleMeaning,
+  });
+
+  final FlashCardEntity card;
+  final bool showingBack;
+  final bool showMeaning;
+  final VoidCallback onToggleMeaning;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = showingBack ? Colors.white : const Color(0xff20211f);
+    final text = showingBack ? card.backText : card.frontText;
+    final phonetic = showingBack ? card.backPhonetic : card.frontPhonetic;
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          text,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: color,
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        if (phonetic.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            '[${_stripOuterBrackets(phonetic)}]',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: showingBack
+                  ? const Color(0xffc9f2e3)
+                  : const Color(0xff68645c),
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+        if (showingBack && card.meaning.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          OutlinedButton.icon(
+            onPressed: onToggleMeaning,
+            icon: Icon(
+              showMeaning
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
+            label: Text(showMeaning ? 'Ẩn nghĩa' : 'Bật nghĩa'),
+          ),
+          if (showMeaning) ...[
+            const SizedBox(height: 10),
+            Text(
+              card.meaning,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
   }
 }
 
@@ -571,15 +670,19 @@ class _ImportPanel extends StatefulWidget {
 class _ImportPanelState extends State<_ImportPanel> {
   final bulkController = TextEditingController();
   final frontController = TextEditingController();
+  final frontPhoneticController = TextEditingController();
+  final backController = TextEditingController();
+  final backPhoneticController = TextEditingController();
   final meaningController = TextEditingController();
-  final phoneticController = TextEditingController();
 
   @override
   void dispose() {
     bulkController.dispose();
     frontController.dispose();
+    frontPhoneticController.dispose();
+    backController.dispose();
+    backPhoneticController.dispose();
     meaningController.dispose();
-    phoneticController.dispose();
     super.dispose();
   }
 
@@ -631,42 +734,62 @@ class _ImportPanelState extends State<_ImportPanel> {
 
   Future<void> _showSingleCardDialog(BuildContext context) async {
     frontController.clear();
+    frontPhoneticController.clear();
+    backController.clear();
+    backPhoneticController.clear();
     meaningController.clear();
-    phoneticController.clear();
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Thêm thẻ vào "${widget.deckName}"'),
         content: SizedBox(
           width: 420,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: frontController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Từ vựng',
-                  prefixIcon: Icon(Icons.style_outlined),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: frontController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mặt trước',
+                    prefixIcon: Icon(Icons.style_outlined),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: meaningController,
-                decoration: const InputDecoration(
-                  labelText: 'Nghĩa',
-                  prefixIcon: Icon(Icons.translate_outlined),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: frontPhoneticController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phiên âm mặt trước',
+                    prefixIcon: Icon(Icons.record_voice_over_outlined),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneticController,
-                decoration: const InputDecoration(
-                  labelText: 'Phiên âm',
-                  prefixIcon: Icon(Icons.record_voice_over_outlined),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: backController,
+                  decoration: const InputDecoration(
+                    labelText: 'Mặt sau',
+                    prefixIcon: Icon(Icons.translate_outlined),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: backPhoneticController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phiên âm mặt sau',
+                    prefixIcon: Icon(Icons.record_voice_over_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: meaningController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nghĩa tiếng Việt',
+                    prefixIcon: Icon(Icons.lightbulb_outline),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -684,7 +807,7 @@ class _ImportPanelState extends State<_ImportPanel> {
     );
     if (saved == true &&
         frontController.text.trim().isNotEmpty &&
-        meaningController.text.trim().isNotEmpty) {
+        backController.text.trim().isNotEmpty) {
       final front = frontController.text.trim();
       if (_frontKeys(widget.existingFronts).contains(_frontKey(front))) {
         if (!context.mounted) return;
@@ -696,8 +819,10 @@ class _ImportPanelState extends State<_ImportPanel> {
       widget.onImport(
         [
           front,
+          frontPhoneticController.text.trim(),
+          backController.text.trim(),
+          backPhoneticController.text.trim(),
           meaningController.text.trim(),
-          phoneticController.text.trim(),
         ].join(' : '),
       );
     }
@@ -717,7 +842,7 @@ class _ImportPanelState extends State<_ImportPanel> {
             minLines: 8,
             maxLines: 12,
             decoration: const InputDecoration(
-              hintText: 'hello : xin chào : he-lo\napple : quả táo : ap-pul',
+              hintText: 'hello : he-lo : 你好 : ni hao : xin chào',
               border: OutlineInputBorder(),
             ),
           ),

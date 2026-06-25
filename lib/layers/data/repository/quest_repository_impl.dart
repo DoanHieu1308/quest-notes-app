@@ -199,25 +199,30 @@ class QuestRepositoryImpl implements QuestRepository {
     final cards = [...state.flashCards];
     final knownFronts = cards
         .where((card) => card.deckId == deckId)
-        .map((card) => _frontKey(card.front))
+        .map(
+          (card) => _frontKey(
+            card.frontText.isNotEmpty ? card.frontText : card.front,
+          ),
+        )
         .toSet();
     var count = 0;
 
-    String? pendingFront;
-    final pendingBackLines = <String>[];
-
-    void flushPendingCard() {
-      final front = pendingFront?.trim() ?? '';
-      final back = pendingBackLines.join('\n').trim();
-      if (front.isEmpty || back.isEmpty) return;
-      final key = _frontKey(front);
-      if (knownFronts.contains(key)) return;
+    for (final line in rawText.split(RegExp(r'\r?\n'))) {
+      final parsed = _parseImportLine(line.trim());
+      if (parsed.frontText.isEmpty || parsed.backText.isEmpty) continue;
+      final key = _frontKey(parsed.frontText);
+      if (knownFronts.contains(key)) continue;
       cards.add(
         FlashCardDto(
           id: newId(),
           deckId: deckId,
-          front: front,
-          back: back,
+          front: _sideText(parsed.frontText, parsed.frontPhonetic),
+          back: _backText(parsed.backText, parsed.backPhonetic, parsed.meaning),
+          frontText: parsed.frontText,
+          frontPhonetic: parsed.frontPhonetic,
+          backText: parsed.backText,
+          backPhonetic: parsed.backPhonetic,
+          meaning: parsed.meaning,
           mastered: false,
         ),
       );
@@ -225,42 +230,51 @@ class QuestRepositoryImpl implements QuestRepository {
       count++;
     }
 
-    for (final line in rawText.split(RegExp(r'\r?\n'))) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-      if (!trimmed.contains(':')) {
-        if (pendingFront != null) pendingBackLines.add(trimmed);
-        continue;
-      }
-
-      flushPendingCard();
-      final parsed = _parseImportLine(trimmed);
-      pendingFront = parsed.front;
-      pendingBackLines
-        ..clear()
-        ..add(parsed.back);
-    }
-    flushPendingCard();
-
     if (count > 0) {
       await _saveAndSyncWidget(state.copyWith(flashCards: cards));
     }
     return count;
   }
 
-  ({String front, String back}) _parseImportLine(String line) {
+  ({
+    String frontText,
+    String frontPhonetic,
+    String backText,
+    String backPhonetic,
+    String meaning,
+  })
+  _parseImportLine(String line) {
+    if (line.isEmpty || !line.contains(':')) {
+      return (
+        frontText: '',
+        frontPhonetic: '',
+        backText: '',
+        backPhonetic: '',
+        meaning: '',
+      );
+    }
     final parts = line.split(':');
-    final front = parts.first.trim();
-    final meaning = parts.length > 1 ? parts[1].trim() : '';
-    final phonetic = parts.length > 2 ? parts.sublist(2).join(':').trim() : '';
-    return (front: front, back: _flashCardBackText(meaning, phonetic));
+    return (
+      frontText: parts.isNotEmpty ? parts[0].trim() : '',
+      frontPhonetic: parts.length > 1 ? _stripBrackets(parts[1].trim()) : '',
+      backText: parts.length > 2 ? parts[2].trim() : '',
+      backPhonetic: parts.length > 3 ? _stripBrackets(parts[3].trim()) : '',
+      meaning: parts.length > 4 ? parts.sublist(4).join(':').trim() : '',
+    );
   }
 
-  String _flashCardBackText(String meaning, String phonetic) {
+  String _sideText(String text, String phonetic) {
     final parts = <String>[];
-    if (meaning.isNotEmpty) parts.add(meaning);
+    if (text.isNotEmpty) parts.add(text);
     if (phonetic.isNotEmpty) parts.add('[${_stripBrackets(phonetic)}]');
     return parts.join('\n');
+  }
+
+  String _backText(String text, String phonetic, String meaning) {
+    return [
+      _sideText(text, phonetic),
+      if (meaning.isNotEmpty) meaning,
+    ].where((part) => part.trim().isNotEmpty).join('\n');
   }
 
   String _stripBrackets(String value) {
@@ -289,6 +303,11 @@ class QuestRepositoryImpl implements QuestRepository {
       deckId: card.deckId,
       front: card.front,
       back: card.back,
+      frontText: card.frontText,
+      frontPhonetic: card.frontPhonetic,
+      backText: card.backText,
+      backPhonetic: card.backPhonetic,
+      meaning: card.meaning,
       mastered: !card.mastered,
     );
     await _saveAndSyncWidget(state.copyWith(flashCards: cards));
@@ -403,6 +422,11 @@ class QuestRepositoryImpl implements QuestRepository {
         deckId: defaultFlashCardDeckId,
         front: card.front,
         back: card.back,
+        frontText: card.frontText,
+        frontPhonetic: card.frontPhonetic,
+        backText: card.backText,
+        backPhonetic: card.backPhonetic,
+        meaning: card.meaning,
         mastered: card.mastered,
       );
     }).toList();

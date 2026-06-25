@@ -56,6 +56,11 @@ class QuestTranslator {
       deckId: dto.deckId,
       front: dto.front,
       back: dto.back,
+      frontText: dto.frontText,
+      frontPhonetic: dto.frontPhonetic,
+      backText: dto.backText,
+      backPhonetic: dto.backPhonetic,
+      meaning: dto.meaning,
       mastered: dto.mastered,
     );
   }
@@ -66,6 +71,11 @@ class QuestTranslator {
       deckId: entity.deckId,
       front: entity.front,
       back: entity.back,
+      frontText: entity.frontText,
+      frontPhonetic: entity.frontPhonetic,
+      backText: entity.backText,
+      backPhonetic: entity.backPhonetic,
+      meaning: entity.meaning,
       mastered: entity.mastered,
     );
   }

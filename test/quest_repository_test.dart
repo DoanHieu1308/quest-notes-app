@@ -65,7 +65,7 @@ void main() {
       );
       final imported = await repository.importFlashCards(
         'english-a1',
-        'hello : xin chao : he-lo\nwork : cong viec',
+        'hello : he-lo : xin chao : sin-chow : chao ban\nwork : wurk : cong viec : kong-viec : viec lam',
       );
       expect(imported, 2);
 
@@ -81,13 +81,14 @@ void main() {
         state.flashCards.every((card) => card.deckId == 'english-a1'),
         isTrue,
       );
-      expect(state.flashCards[0].back, 'xin chao\n[he-lo]');
-      expect(state.flashCards[1].back, 'cong viec');
+      expect(state.flashCards[0].front, 'hello\n[he-lo]');
+      expect(state.flashCards[0].back, 'xin chao\n[sin-chow]\nchao ban');
+      expect(state.flashCards[1].back, 'cong viec\n[kong-viec]\nviec lam');
       expect(state.flashDecks.any((deck) => deck.id == 'english-a1'), isTrue);
 
       final duplicateImport = await repository.importFlashCards(
         'english-a1',
-        'hello : duplicate meaning : duplicate-phonetic',
+        'hello : duplicate : duplicate meaning : duplicate : duplicate',
       );
       expect(duplicateImport, 0);
 
@@ -99,15 +100,23 @@ void main() {
         FlashCardEntity(
           id: firstCard.id,
           deckId: firstCard.deckId,
-          front: 'hello updated',
-          back: 'xin chao updated',
+          front: 'hello updated\n[updated]',
+          back: 'xin chao updated\n[sin-chow]\nupdated meaning',
+          frontText: 'hello updated',
+          frontPhonetic: 'updated',
+          backText: 'xin chao updated',
+          backPhonetic: 'sin-chow',
+          meaning: 'updated meaning',
           mastered: firstCard.mastered,
         ),
       );
 
       state = await repository.loadState();
-      expect(state.flashCards[0].front, 'hello updated');
-      expect(state.flashCards[0].back, 'xin chao updated');
+      expect(state.flashCards[0].front, 'hello updated\n[updated]');
+      expect(
+        state.flashCards[0].back,
+        'xin chao updated\n[sin-chow]\nupdated meaning',
+      );
 
       await repository.toggleFlashCardMastered(state.flashCards[0].id);
       await repository.toggleFlashCardMastered(state.flashCards[1].id);
