@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:note_app/layers/data/response/flash_card_dto.dart';
 import 'package:note_app/layers/data/repository/quest_repository_impl.dart';
 import 'package:note_app/layers/data/source/api/local_quest_api_client.dart';
 import 'package:note_app/layers/data/source/local/quest_local_data_source.dart';
@@ -12,6 +13,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('legacy flashcard back is migrated to hidden meaning', () {
+    final card = FlashCardDto.fromJson({
+      'id': 'legacy',
+      'deckId': 'english-a1',
+      'front': 'hello',
+      'back': 'xin chao\n[sin-chow]',
+      'meaning': 'xin chao',
+      'mastered': false,
+    });
+
+    expect(card.backText, '');
+    expect(card.backPhonetic, '');
+    expect(card.meaning, 'xin chao');
+  });
 
   test(
     'repository persists local data and maps DTOs to domain entities',

@@ -32,6 +32,8 @@ class FlashCardDto {
     final back = json['back'] as String? ?? '';
     final frontParts = _sideParts(front);
     final backParts = _backParts(back);
+    final hasStructuredBack =
+        json.containsKey('backText') || json.containsKey('backPhonetic');
     return FlashCardDto(
       id: json['id'] as String,
       deckId: json['deckId'] as String? ?? defaultFlashCardDeckId,
@@ -39,9 +41,15 @@ class FlashCardDto {
       back: back,
       frontText: json['frontText'] as String? ?? frontParts.text,
       frontPhonetic: json['frontPhonetic'] as String? ?? frontParts.phonetic,
-      backText: json['backText'] as String? ?? backParts.text,
-      backPhonetic: json['backPhonetic'] as String? ?? backParts.phonetic,
-      meaning: json['meaning'] as String? ?? backParts.meaning,
+      backText:
+          json['backText'] as String? ??
+          (hasStructuredBack ? backParts.text : ''),
+      backPhonetic:
+          json['backPhonetic'] as String? ??
+          (hasStructuredBack ? backParts.phonetic : ''),
+      meaning:
+          json['meaning'] as String? ??
+          (hasStructuredBack ? backParts.meaning : backParts.text),
       mastered: json['mastered'] as bool? ?? false,
     );
   }
