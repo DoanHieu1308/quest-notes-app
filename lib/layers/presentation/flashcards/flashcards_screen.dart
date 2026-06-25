@@ -118,7 +118,13 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
         const SizedBox(height: 12),
         _ImportPanel(
           deckName: deck.name,
-          existingFronts: deckCards.map((card) => card.frontText).toSet(),
+          existingFronts: deckCards
+              .map(
+                (card) => card.frontText.isNotEmpty
+                    ? card.frontText
+                    : card.frontPhonetic,
+              )
+              .toSet(),
           onImport: _importCards,
           onImportExcel: _importCardsFromExcel,
         ),
@@ -810,14 +816,24 @@ class _ImportPanelState extends State<_ImportPanel> {
         ],
       ),
     );
-    if (saved == true &&
-        frontController.text.trim().isNotEmpty &&
-        backController.text.trim().isNotEmpty) {
+    final hasFront =
+        frontController.text.trim().isNotEmpty ||
+        frontPhoneticController.text.trim().isNotEmpty;
+    final hasBack =
+        backController.text.trim().isNotEmpty ||
+        backPhoneticController.text.trim().isNotEmpty ||
+        meaningController.text.trim().isNotEmpty;
+    if (saved == true && hasFront && hasBack) {
       final front = frontController.text.trim();
-      if (_frontKeys(widget.existingFronts).contains(_frontKey(front))) {
+      final frontKey = _frontKey(front, frontPhoneticController.text);
+      if (_frontKeys(widget.existingFronts).contains(frontKey)) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Từ "$front" đã có trong bộ này.')),
+          SnackBar(
+            content: Text(
+              'Từ "${front.isNotEmpty ? front : frontPhoneticController.text.trim()}" đã có trong bộ này.',
+            ),
+          ),
         );
         return;
       }
@@ -920,8 +936,9 @@ Set<String> _frontKeys(Iterable<String> fronts) {
   return fronts.map(_frontKey).toSet();
 }
 
-String _frontKey(String front) {
-  return front.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+String _frontKey(String front, [String phonetic = '']) {
+  final value = front.trim().isNotEmpty ? front : phonetic;
+  return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 }
 
 class _RewardPanel extends StatelessWidget {

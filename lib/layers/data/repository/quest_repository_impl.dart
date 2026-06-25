@@ -201,7 +201,8 @@ class QuestRepositoryImpl implements QuestRepository {
         .where((card) => card.deckId == deckId)
         .map(
           (card) => _frontKey(
-            card.frontText.isNotEmpty ? card.frontText : card.front,
+            card.frontText,
+            card.frontPhonetic.isNotEmpty ? card.frontPhonetic : card.front,
           ),
         )
         .toSet();
@@ -209,8 +210,8 @@ class QuestRepositoryImpl implements QuestRepository {
 
     for (final line in rawText.split(RegExp(r'\r?\n'))) {
       final parsed = _parseImportLine(line.trim());
-      if (parsed.frontText.isEmpty || parsed.backText.isEmpty) continue;
-      final key = _frontKey(parsed.frontText);
+      if (!_hasFrontSide(parsed) || !_hasBackSide(parsed)) continue;
+      final key = _frontKey(parsed.frontText, parsed.frontPhonetic);
       if (knownFronts.contains(key)) continue;
       cards.add(
         FlashCardDto(
@@ -287,8 +288,37 @@ class QuestRepositoryImpl implements QuestRepository {
     return trimmed;
   }
 
-  String _frontKey(String front) {
-    return front.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+  bool _hasFrontSide(
+    ({
+      String backPhonetic,
+      String backText,
+      String frontPhonetic,
+      String frontText,
+      String meaning,
+    })
+    card,
+  ) {
+    return card.frontText.isNotEmpty || card.frontPhonetic.isNotEmpty;
+  }
+
+  bool _hasBackSide(
+    ({
+      String backPhonetic,
+      String backText,
+      String frontPhonetic,
+      String frontText,
+      String meaning,
+    })
+    card,
+  ) {
+    return card.backText.isNotEmpty ||
+        card.backPhonetic.isNotEmpty ||
+        card.meaning.isNotEmpty;
+  }
+
+  String _frontKey(String front, [String phonetic = '']) {
+    final value = front.trim().isNotEmpty ? front : phonetic;
+    return value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
   @override

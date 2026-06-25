@@ -196,7 +196,12 @@ class FlashCardsController extends MobxController {
     final trimmedFrontPhonetic = _stripBrackets(frontPhonetic);
     final trimmedBackPhonetic = _stripBrackets(backPhonetic);
     final trimmedMeaning = meaning.trim();
-    if (deckId == null || trimmedFront.isEmpty || trimmedBack.isEmpty) return;
+    final hasFront = trimmedFront.isNotEmpty || trimmedFrontPhonetic.isNotEmpty;
+    final hasBack =
+        trimmedBack.isNotEmpty ||
+        trimmedBackPhonetic.isNotEmpty ||
+        trimmedMeaning.isNotEmpty;
+    if (deckId == null || !hasFront || !hasBack) return;
     await _repository.saveFlashCard(
       FlashCardEntity(
         id: card?.id ?? newId(),
