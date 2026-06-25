@@ -29,6 +29,22 @@ void main() {
     expect(card.meaning, 'xin chao');
   });
 
+  test('polluted back text is split back into hidden meaning', () {
+    final card = FlashCardDto.fromJson({
+      'id': 'polluted',
+      'deckId': 'chinese-a1',
+      'frontText': 'Hello',
+      'backText': 'Ni hao\n[nihao]\nXin chao',
+      'backPhonetic': '',
+      'meaning': '',
+      'mastered': false,
+    });
+
+    expect(card.backText, 'Ni hao');
+    expect(card.backPhonetic, 'nihao');
+    expect(card.meaning, 'Xin chao');
+  });
+
   test(
     'repository persists local data and maps DTOs to domain entities',
     () async {

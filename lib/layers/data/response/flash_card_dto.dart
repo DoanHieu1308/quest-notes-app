@@ -34,6 +34,16 @@ class FlashCardDto {
     final backParts = _backParts(back);
     final hasStructuredBack =
         json.containsKey('backText') || json.containsKey('backPhonetic');
+    final rawBackText = _blankToNull(json['backText'] as String?);
+    final rawBackPhonetic = _blankToNull(json['backPhonetic'] as String?);
+    final rawMeaning = _blankToNull(json['meaning'] as String?);
+    final normalizedBackTextParts = rawBackText == null
+        ? null
+        : _backParts(rawBackText);
+    final backTextHasStructure =
+        normalizedBackTextParts != null &&
+        (normalizedBackTextParts.phonetic.isNotEmpty ||
+            normalizedBackTextParts.meaning.isNotEmpty);
     return FlashCardDto(
       id: json['id'] as String,
       deckId: json['deckId'] as String? ?? defaultFlashCardDeckId,
@@ -42,13 +52,17 @@ class FlashCardDto {
       frontText: json['frontText'] as String? ?? frontParts.text,
       frontPhonetic: json['frontPhonetic'] as String? ?? frontParts.phonetic,
       backText:
-          json['backText'] as String? ??
+          (backTextHasStructure
+              ? normalizedBackTextParts!.text
+              : rawBackText) ??
           (hasStructuredBack ? backParts.text : ''),
       backPhonetic:
-          json['backPhonetic'] as String? ??
+          rawBackPhonetic ??
+          (backTextHasStructure ? normalizedBackTextParts!.phonetic : null) ??
           (hasStructuredBack ? backParts.phonetic : ''),
       meaning:
-          json['meaning'] as String? ??
+          rawMeaning ??
+          (backTextHasStructure ? normalizedBackTextParts!.meaning : null) ??
           (hasStructuredBack ? backParts.meaning : backParts.text),
       mastered: json['mastered'] as bool? ?? false,
     );
@@ -69,6 +83,11 @@ class FlashCardDto {
 }
 
 const defaultFlashCardDeckId = 'default-flashcard-deck';
+
+String? _blankToNull(String? value) {
+  final trimmed = value?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
 
 ({String text, String phonetic}) _sideParts(String value) {
   final lines = value
