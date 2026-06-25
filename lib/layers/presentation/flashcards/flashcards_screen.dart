@@ -141,7 +141,7 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
           ),
           const SizedBox(height: 12),
           GestureDetector(
-            onTap: controller.flip,
+            onTap: _flipCard,
             onHorizontalDragEnd: (details) {
               final velocity = details.primaryVelocity ?? 0;
               if (velocity < -250 &&
@@ -460,6 +460,11 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
 
   Future<void> _importCardsFromExcel(Uint8List bytes) async {
     await controller.importCardsFromExcel(bytes);
+  }
+
+  void _flipCard() {
+    setState(() => _showMeaning = false);
+    controller.flip();
   }
 
   void _moveCard(int direction) {
